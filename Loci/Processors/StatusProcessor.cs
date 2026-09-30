@@ -4,6 +4,7 @@ using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Render;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Loci.Data;
+using TerraFX.Interop.Windows;
 
 namespace Loci.Processors;
 public unsafe class StatusProcessor : IDisposable
@@ -60,19 +61,21 @@ public unsafe class StatusProcessor : IDisposable
         if (addonBase is null || !AddonHelp.IsAddonReady(addonBase) || !_config.CanLociModifyUI())
             return;
         
-        // reset our offset values
-        _numStatuses = 0;
-        _firstStatusIdx = 0;
+
         
         var nodeList = addonBase->UldManager.NodeList;
         var size = addonBase->UldManager.NodeListCount - 1;
+        // reset our offset values
+        _numStatuses = 0; _firstStatusIdx = -1; // set this to an impossible value?
         
         for (var i = size; i >= 1; i--) //skip root node, so end at 1
         {
             if (!nodeList[i]->IsVisible()) continue;
             _numStatuses++;
-            if (_firstStatusIdx == 0) _firstStatusIdx = i;
+            if (_firstStatusIdx == -1) _firstStatusIdx = i;
         }
+
+        _firstStatusIdx = _firstStatusIdx == -1 ? size : _firstStatusIdx; // ensure this is always within a valid range
     }
 
     public void UpdateStatus(AtkUnitBase* addon, ActorSM manager, int statusCnt, bool hideAll = false)
@@ -88,7 +91,9 @@ public unsafe class StatusProcessor : IDisposable
         //   basic assumptions about the single bar status manager, and some statuses won't be visible.
         //   This will also likely cause offsets when counting debuffs on the right side of the bar, but without rewriting this
         //   entire thing we have no way to actually check that.
-        int baseCnt = _firstStatusIdx - statusCnt;
+        
+        // _firstStatusIdx should never be zero here, but just in case.
+        var baseCnt = _firstStatusIdx - statusCnt;
 
         // Update visibility
         for (var i = baseCnt; i >= 1; i--)
