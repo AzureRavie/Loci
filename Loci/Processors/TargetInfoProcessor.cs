@@ -18,6 +18,7 @@ public unsafe class TargetInfoProcessor
     private readonly LociManager _manager;
 
     public int NumVanillaStatuses = 0;
+
     public TargetInfoProcessor(ILogger<TargetInfoProcessor> logger, MainConfig config, LociManager manager)
     {
         _logger = logger;
@@ -40,13 +41,14 @@ public unsafe class TargetInfoProcessor
 
     public void HideAll()
     {
-        if(AddonHelp.TryGetAddonByName<AtkUnitBase>("_TargetInfo", out var addon) && AddonHelp.IsAddonReady(addon))
+        if (AddonHelp.TryGetAddonByName<AtkUnitBase>("_TargetInfo", out var addon) && AddonHelp.IsAddonReady(addon))
             UpdateAddon(addon, true);
     }
 
     // Func helper to get around 7.4's internal AddonArgs while removing ArtificialAddonArgs usage
     private void OnPreRequestedUpdate(AddonEvent t, AddonArgs args)
         => PreAddonRequestedUpdate((AtkUnitBase*)args.Addon.Address);
+
     private void OnPostRequestedUpdate(AddonEvent t, AddonArgs args)
         => PostRequestedUpdate((AtkUnitBase*)args.Addon.Address);
 
@@ -67,6 +69,7 @@ public unsafe class TargetInfoProcessor
                 if (c->IsVisible())
                     c->NodeFlags ^= NodeFlags.Visible;
             }
+
             _logger.LogTrace($"Hid all status icons for companion target: {Utils.ToLociName((Character*)target)}", LoggerType.Processors);
         }
     }
@@ -76,7 +79,12 @@ public unsafe class TargetInfoProcessor
         if (addonBase is null || !AddonHelp.IsAddonReady(addonBase))
             return;
 
-        if (_config.Current.MoodlesSupport)
+        // dalamud requires this to be run on the framework tick, 
+        // and i can't be arsed to figure out how to not make it reference stale data
+        // at 00:00 right now, commenting this out fixes the bug for now and we can figure it out
+        // later if we still need this code.
+        
+        /*if (_config.Current.MoodlesSupport)
         {
             NumVanillaStatuses = 0;
 
@@ -90,16 +98,16 @@ public unsafe class TargetInfoProcessor
                 Svc.Framework.RunOnTick(() => { NumVanillaStatuses = statusList.Count(s => s.GameData.Value.Icon != 0 || s.GameData.Value.Flags != 47); });
         }
         else
+        {*/
+        NumVanillaStatuses = 0;
+        for (var i = 32; i >= 3; i--)
         {
-            NumVanillaStatuses = 0;
-            for (var i = 32; i >= 3; i--)
-            {
-                // Ensure we count the number of vanilla statuses.
-                var c = addonBase->UldManager.NodeList[i];
-                if (c->IsVisible())
-                    NumVanillaStatuses++;
-            }
+            // Ensure we count the number of vanilla statuses.
+            var c = addonBase->UldManager.NodeList[i];
+            if (c->IsVisible())
+                NumVanillaStatuses++;
         }
+
         _logger.LogTrace($"TargetInfo Requested update: {NumVanillaStatuses}", LoggerType.Processors);
     }
 
@@ -174,10 +182,10 @@ public unsafe class TargetInfoProcessor
         // Calc the endCount.
         var endCnt = Math.Max(baseCnt - sm.Statuses.Count - LociProcessor.RemovedThisTick + 1, 3);
 
-        for(var i = baseCnt; i >= endCnt; i--)
+        for (var i = baseCnt; i >= endCnt; i--)
         {
             var c = addon->UldManager.NodeList[i];
-            if(c->IsVisible())
+            if (c->IsVisible())
                 c->NodeFlags ^= NodeFlags.Visible;
         }
 

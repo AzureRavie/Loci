@@ -92,7 +92,6 @@ public unsafe class StatusProcessor : IDisposable
         //   This will also likely cause offsets when counting debuffs on the right side of the bar, but without rewriting this
         //   entire thing we have no way to actually check that.
         
-        // _firstStatusIdx should never be zero here, but just in case.
         var baseCnt = _firstStatusIdx - statusCnt;
 
         // Update visibility
